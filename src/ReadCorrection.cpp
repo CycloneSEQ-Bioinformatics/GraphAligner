@@ -44,8 +44,15 @@ std::string getCorrected(const std::string& raw, const std::vector<Correction>& 
 		assert(i == 0 || corrections[i].startIndex >= corrections[i-1].startIndex);
 		if (corrections[i].startIndex < currentEnd)
 		{
-			size_t overlap = getLongestOverlap(result, corrections[i].corrected, maxOverlap);
-			result += toUpper(corrections[i].corrected.substr(overlap));
+			if(corrections[i].endIndex <= currentEnd)continue;
+			if(currentEnd - corrections[i].startIndex > maxOverlap){
+				std::string corrected_str = corrections[i].corrected.substr(currentEnd - corrections[i].startIndex - maxOverlap);
+				size_t overlap = getLongestOverlap(result, corrected_str, maxOverlap);
+				result += toUpper(corrected_str.substr(overlap));
+			}else{
+				size_t overlap = getLongestOverlap(result, corrections[i].corrected, maxOverlap);
+				result += toUpper(corrections[i].corrected.substr(overlap));
+			}
 		}
 		else if (corrections[i].startIndex > currentEnd)
 		{
