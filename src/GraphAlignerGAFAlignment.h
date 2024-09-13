@@ -34,10 +34,10 @@ class GraphAlignerGAFAlignment
 	};
 public:
 
-	static std::string traceToAlignment(const std::string& seq_id, const std::string& sequence, const GraphAlignerCommon<size_t, int64_t, uint64_t>::OnewayTrace& tracePair, double alignmentXScore, int mappingQuality, const Params& params, bool cigarMatchMismatchMerge, const bool includecigar)
+	static std::pair<std::string, std::string> traceToAlignment(const std::string& seq_id, const std::string& sequence, const GraphAlignerCommon<size_t, int64_t, uint64_t>::OnewayTrace& tracePair, double alignmentXScore, int mappingQuality, const Params& params, bool cigarMatchMismatchMerge, const bool includecigar)
 	{
 		auto& trace = tracePair.trace;
-		if (trace.size() == 0) return nullptr;
+		if (trace.size() == 0) return std::pair<std::string, std::string>();
 		std::stringstream cigar;
 		std::string readName = seq_id;
 		size_t readLen = sequence.size();
@@ -196,7 +196,7 @@ public:
 		sstr << "\t" << "dv:f:" << 1.0-((double)matches / (double)(matches + mismatches + deletions + insertions));
 		sstr << "\t" << "id:f:" << ((double)matches / (double)(matches + mismatches + deletions + insertions));
 		if (includecigar) sstr << "\t" << "cg:Z:" << cigar.str();
-		return sstr.str();
+		return std::make_pair(sstr.str(), cigar.str());
 	}
 
 private:

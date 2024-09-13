@@ -345,6 +345,7 @@ public:
 		}
 		std::string corrected;
 		std::string GAFline;
+		std::string cigar;
 		std::shared_ptr<vg::Alignment> alignment;
 		std::shared_ptr<GraphAlignerCommon<size_t, int64_t, uint64_t>::OnewayTrace> trace;
 		size_t seedGoodness;

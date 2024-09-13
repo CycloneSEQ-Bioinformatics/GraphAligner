@@ -326,7 +326,7 @@ void writeGAFToQueue(moodycamel::ProducerToken& token, const AlignerParams& para
 	QueueInsertSlowly(token, alignmentsOut, strstr.str());
 }
 
-void writeCorrectedToQueue(moodycamel::ProducerToken& token, const AlignerParams& params, const std::string& readName, const std::string& original, moodycamel::ConcurrentQueue<std::string*>& correctedOut, const AlignmentResult& alignments)
+void writeCorrectedToQueue(moodycamel::ProducerToken& token, const AlignerParams& params, const std::string& readName, const std::string& original, moodycamel::ConcurrentQueue<std::string*>& correctedOut, const AlignmentResult& alignmentResult)
 {
 	std::stringstream strstr;
 	zstr::ostream *compressed = nullptr;
@@ -335,14 +335,15 @@ void writeCorrectedToQueue(moodycamel::ProducerToken& token, const AlignerParams
 		compressed = new zstr::ostream(strstr);
 	}
 	std::vector<Correction> corrections;
-	for (size_t i = 0; i < alignments.alignments.size(); i++)
+	for (size_t i = 0; i < alignmentResult.alignments.size(); i++)
 	{
-		assert(!alignments.alignments[i].alignmentFailed());
-		assert(alignments.alignments[i].corrected.size() > 0);
+		assert(!alignmentResult.alignments[i].alignmentFailed());
+		assert(alignmentResult.alignments[i].corrected.size() > 0);
 		corrections.emplace_back();
-		corrections.back().startIndex = alignments.alignments[i].alignmentStart;
-		corrections.back().endIndex = alignments.alignments[i].alignmentEnd;
-		corrections.back().corrected = alignments.alignments[i].corrected;
+		corrections.back().startIndex = alignmentResult.alignments[i].alignmentStart;
+		corrections.back().endIndex = alignmentResult.alignments[i].alignmentEnd;
+		corrections.back().corrected = alignmentResult.alignments[i].corrected;
+		corrections.back().cigar = alignmentResult.alignments[i].cigar;
 	}
 	std::sort(corrections.begin(), corrections.end(), [](const Correction& left, const Correction& right) { return left.startIndex < right.startIndex; });
 	std::string corrected = getCorrected(original, corrections, 1000); // todo better maxOverlap?
