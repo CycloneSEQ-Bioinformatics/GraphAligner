@@ -61,10 +61,14 @@ std::string getCorrected(const std::string& raw, const std::vector<Correction>& 
 				result += toUpper(corrections[i].corrected.substr(overlap));
 			}
 			*/
-			std::map mapping = get_aligned_positions(0, corrections[i].startIndex, corrections[i].cigar);
-			auto lastElement = mapping.rbegin();
-			if(lastElement->first <= currentEnd)continue;
-			result += toUpper(corrections[i].corrected.substr(mapping.at(currentEnd)));
+			std::map mapping = get_aligned_positions(corrections[i].startIndex, 0, corrections[i].cigar); // mapping: raw -> corrected
+			if(mapping.rbegin()->first <= currentEnd)continue;
+			size_t count_bad_base = 0;
+			while(mapping.find(currentEnd-count_bad_base) == mapping.end()){
+				count_bad_base ++;
+			}
+			result = result.substr(0, result.length()-count_bad_base);
+			result += toUpper(corrections[i].corrected.substr(mapping.at(currentEnd-count_bad_base)));
 		}
 		else if (corrections[i].startIndex > currentEnd)
 		{
@@ -103,19 +107,19 @@ std::map<size_t, size_t> get_aligned_positions(
                 case '=':  // Sequence match
                 case 'X':  // Sequence mismatch
                     for (uint32_t j = 0; j < length; ++j) {
-                        mapping[reference_position] = query_position;
+                        mapping[query_position] = reference_position;
                         query_position++;
                         reference_position++;
                     }
                     break;
 
                 case 'I':  // Insertion to the reference
-                    // query_position += length; // WARNNING: CIGAR has no INS seq here.
+                    query_position += length;
                     break;
                 
                 case 'D':  // Deletion from the reference
                     for (uint32_t j = 0; j < length; ++j) {
-                        mapping[reference_position] = query_position;
+                        mapping[query_position] = reference_position;
                         reference_position++;
                     }
                     break;
