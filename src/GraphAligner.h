@@ -114,7 +114,9 @@ public:
 	void AddGAFLine(const std::string& seq_id, const std::string& sequence, AlignmentResult::AlignmentItem& alignment, bool cigarMatchMismatchMerge, const bool includeCigar) const
 	{
 		assert(alignment.trace->trace.size() > 0);
-		alignment.GAFline = GAFAlignment::traceToAlignment(seq_id, sequence, *alignment.trace, alignment.alignmentXScore, alignment.mappingQuality, params, cigarMatchMismatchMerge, includeCigar);
+		std::pair<std::string, std::string> gafline = GAFAlignment::traceToAlignment(seq_id, sequence, *alignment.trace, alignment.alignmentXScore, alignment.mappingQuality, params, cigarMatchMismatchMerge, includeCigar);
+		alignment.GAFline = gafline.first;
+		alignment.cigar = gafline.second;
 	}
 
 	void AddCorrected(AlignmentResult::AlignmentItem& alignment) const
@@ -720,31 +722,32 @@ private:
 
 	std::vector<AlignmentResult::AlignmentItem> getAlignmentsFromMultiseeds(const std::string& sequence, const std::string& revSequence, const std::vector<ProcessedSeedHit>& seedHits, AlignerGraphsizedState& reusableState, std::vector<ScoreType>& sliceMaxScores) const
 	{
-		auto traces = getMultiseedTraces(sequence, revSequence, seedHits, reusableState, sliceMaxScores);
-		std::vector<AlignmentResult::AlignmentItem> result;
-		for (size_t i = 0; i < traces.size(); i++)
+		auto tracesPaths = getMultiseedTraces(sequence, revSequence, seedHits, reusableState, sliceMaxScores);
+		std::vector<AlignmentResult::AlignmentItem> alignResultsOneCluster;
+		for (size_t i = 0; i < tracesPaths.size(); i++)
 		{
-			assert(!traces[i].failed());
-			fixTraceConsecutiveIndels(traces[i]);
-			fixReverseTraceSeqPosAndOrder(traces[i], sequence.size()-1, sequence, revSequence);
-			fixOverlapTrace(traces[i]);
-			ScoreType alignmentXScore = (ScoreType)(traces[i].trace.back().DPposition.seqPos - traces[i].trace[0].DPposition.seqPos + 1)*100 - params.XscoreErrorCost * (ScoreType)traces[i].score;
+			assert(!tracesPaths[i].failed());
+			fixTraceConsecutiveIndels(tracesPaths[i]);
+			fixReverseTraceSeqPosAndOrder(tracesPaths[i], sequence.size()-1, sequence, revSequence);
+			fixOverlapTrace(tracesPaths[i]);
+			ScoreType alignmentXScore = (ScoreType)(tracesPaths[i].trace.back().DPposition.seqPos - tracesPaths[i].trace[0].DPposition.seqPos + 1)*100 - params.XscoreErrorCost * (ScoreType)tracesPaths[i].score;
 			if (alignmentXScore <= 0) continue;
-			result.emplace_back(std::move(traces[i]), 0, std::numeric_limits<size_t>::max());
+			alignResultsOneCluster.emplace_back(std::move(tracesPaths[i]), 0, std::numeric_limits<size_t>::max());
+			LengthType ref_start = 0;
+			LengthType refend = 0;
 			LengthType seqstart = 0;
-			LengthType seqend = 0;
-			assert(result.back().trace->trace.size() > 0);
-			seqstart = result.back().trace->trace[0].DPposition.seqPos;
-			seqend = result.back().trace->trace.back().DPposition.seqPos;
-			assert(seqend < sequence.size());
-			result.back().alignmentScore = result.back().trace->score;
-			result.back().alignmentStart = seqstart;
-			result.back().alignmentEnd = seqend + 1;
-			result.back().alignmentXScore = (ScoreType)result.back().alignmentLength()*100 - params.XscoreErrorCost * (ScoreType)result.back().alignmentScore;
-			assert(result.back().alignmentXScore == alignmentXScore);
-			result.back().alignmentXScore /= 100.0;
+			assert(alignResultsOneCluster.back().trace->trace.size() > 0);
+			ref_start = alignResultsOneCluster.back().trace->trace[0].DPposition.seqPos;
+			refend = alignResultsOneCluster.back().trace->trace.back().DPposition.seqPos;
+			assert(refend < sequence.size());
+			alignResultsOneCluster.back().alignmentScore = alignResultsOneCluster.back().trace->score;
+			alignResultsOneCluster.back().alignmentStart = ref_start;
+			alignResultsOneCluster.back().alignmentEnd = refend + 1;
+			alignResultsOneCluster.back().alignmentXScore = (ScoreType)alignResultsOneCluster.back().alignmentLength()*100 - params.XscoreErrorCost * (ScoreType)alignResultsOneCluster.back().alignmentScore;
+			assert(alignResultsOneCluster.back().alignmentXScore == alignmentXScore);
+			alignResultsOneCluster.back().alignmentXScore /= 100.0;
 		}
-		return result;
+		return alignResultsOneCluster;
 	}
 
 // 	AlignmentResult::AlignmentItem getAlignmentFromSeed(const std::string& seq_id, const std::string& sequence, const std::string& revSequence, SeedHit seedHit, AlignerGraphsizedState& reusableState) const
